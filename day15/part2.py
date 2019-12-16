@@ -233,40 +233,84 @@ def new_pos(dir):
         return (pos[0]+1, pos[1])
     raise Exception("Unknown dir: %d" % dir)
 
-def move(dir, interp, been_to, depth, max_depth):
+def new_dirs(dir):
+    if dir == 1:
+        return [1,3,4]
+    if dir == 2:
+        return [2,3,4]
+    if dir == 3:
+        return [1,2,3]
+    if dir == 4:
+        return [1,2,4]
+    raise Exception("Unknown dir: %d" % dir)
+
+def search(interp, been_to):
     global pos
-    if depth >= max_depth:
-        raise Exception("max_depth too small")
 
-    if dir != 0:
-        np = new_pos(dir)
-        if np in been_to:
-            return None
-        move_to_result(dir, interp)
-        if interp.out[0] == 0:
-            # Could not move there
-            been_to[np] = '#'
-            return None
-        if interp.out[0] == 2:
-            been_to[np] = 'O'
+    path=[]
+    tries=dict()
+    tries[pos] = (0, [1, 2, 3, 4])
+    been_to[pos] = '.'
+
+    while len(tries) > 0:
+        curr = tries[pos]
+
+        if len(curr[1]) == 0:
+            # Done here, backtrack
+            if curr[0] == 0:
+                # Done!
+                return
+            dir = curr[0]
+            move_to_result(dir, interp)
+            if interp.out[0] == 0:
+                raise Exception("Confused...")
+            del tries[pos]
+            pos = new_pos(dir)
         else:
-            been_to[np] = '.'
-        old_pos = pos
-        pos = np
-        move(0, interp, been_to, depth+1, max_depth)
-        move_to_result(rev(dir), interp)
-        pos = old_pos
-        return None
-    else:
-        move(1, interp, been_to, depth, max_depth)
-        move(2, interp, been_to, depth, max_depth)
-        move(3, interp, been_to, depth, max_depth)
-        move(4, interp, been_to, depth, max_depth)
-    return None
-
-clear()
+            dir = curr[1].pop()
+            np = new_pos(dir)
+            if not np in been_to:
+                move_to_result(dir, interp)
+                if interp.out[0] == 0:
+                    been_to[np] = '#'
+                else:
+                    if interp.out[0] == 1:
+                        been_to[np] = '.'
+                    else:
+                        been_to[np] = 'O'
+                    tries[np] = (rev(dir), new_dirs(dir))
+                    pos = np
 
 been_to = dict()
 pos = (40, 10)
 interp = IntCodeInterpreter(prog, []) # Start on white
-move(0, interp, been_to, 1, 400)
+search(interp, been_to)
+
+count = 0
+while True:
+    found_any = False
+    for p, v in been_to.items():
+        if v == '.':
+            pu = (p[0], p[1]-1)
+            pd = (p[0], p[1]+1)
+            pl = (p[0]-1, p[1])
+            pr = (p[0]+1, p[1])
+            if been_to.get(pu, ' ') == 'O' or been_to.get(pd, ' ') == 'O' or been_to.get(pl, ' ') == 'O' or been_to.get(pr, ' ') == 'O':
+                been_to[p] = 'o'
+                found_any = True
+    for p, v in been_to.items():
+        if v == 'o':
+            been_to[p] = 'O'
+
+    if not found_any:
+        break
+    count = count + 1
+    clear()
+    for y in range(42):
+        for x in range(75):
+            goto(x, y)
+            pos = (x,y-12)
+            if pos in been_to:
+                sys.stdout.write(been_to[pos])
+
+print(count)
