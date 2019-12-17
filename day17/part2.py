@@ -294,7 +294,7 @@ def is_robot(c):
 
 themap = dict()
 interp = IntCodeInterpreter(prog, []) # Start on white
-
+interp.mem[0] = 2
 interp.run()
 
 start = (-1,-1)
@@ -330,11 +330,53 @@ while True:
     else:
         break
 
+def get_at_most(n, s, others):
+    while True:
+        found = False
+        for o in others:
+            if s.find(o) == 0:
+                s = s[len(o)::]
+                found = True
+        if not found:
+            break
+    result = s[:n+1]
+    pos = result.rfind(',')
+    return result[0:pos+1]
+
+def compress(s, words):
+    result = []
+    while True:
+        found = False
+        for i, word in enumerate(words):
+            if s.find(word) == 0:
+                s = s[len(word)::]
+                found = True
+                result.append('ABCD'[i])
+        if not found:
+            break
+    if len(s) == 0 and len(result) <= 10:
+        return ",".join(result)
+
+def find_solution(directives):
+    for max_a in range(2, 21):
+        a = get_at_most(max_a, directives, [])
+        for max_b in range(2, 21):
+            b = get_at_most(max_b, directives, [a])
+            for max_c in range(2, 21):
+                c = get_at_most(max_c, directives, [a, b])
+                res = compress(directives, [a, b, c])
+                if res and len(res) <= 21:
+                    return [res, a[:-1], b[:-1], c[:-1]]
+
 clear()
 
-interp = IntCodeInterpreter(prog, []) # Start on white
-interp.mem[0] = 2
-interp.inp =  [ord(c) for c in "A,B,A,C,B,A,C,B,A,C\nL,12,L,12,L,6,L,6\nR,8,R,4,L,12\nL,12,L,6,R,12,R,8\nn\n"]
+directives = ",".join([str(d) for d in directives]) + ','
+solution = find_solution(directives)
+solution = "\n".join(solution) + "\nn\n"
+print(solution)
+
+interp.inp =  [ord(c) for c in solution]
+interp.out = []
 
 interp.run()
 for c in interp.out:
