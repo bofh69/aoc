@@ -287,22 +287,52 @@ def is_intersect(themap, p):
         return True
     return False
 
+def is_robot(c):
+    if c == '^' or c == 'v' or c == '<' or c == '>':
+        return True
+    return False
+
 themap = dict()
 interp = IntCodeInterpreter(prog, []) # Start on white
 
 interp.run()
 
-clear()
+start = (-1,-1)
+dir = ' '
 
 for c in interp.out:
     if c != 10:
-        themap[pos] = chr(c)
+        c = chr(c)
+        themap[pos] = c
+        if is_robot(c):
+            start = pos
+            dir = c
         pos = (pos[0]+1, pos[1])
     else:
         pos = (0, pos[1]+1)
 
-interp = IntCodeInterpreter(prog, []) # Start on white
+directives = []
+pos = start
 
+while True:
+    count = 0
+    while themap.get(forward(pos, dir), ' ') == '#':
+        count = count + 1
+        pos = forward(pos, dir)
+    if count > 0:
+        directives.append(str(count))
+    elif themap.get(forward(pos, left(dir)), ' ') == '#':
+        dir = left(dir)
+        directives.append('L')
+    elif themap.get(forward(pos, right(dir)), ' ') == '#':
+        dir = right(dir)
+        directives.append('R')
+    else:
+        break
+
+clear()
+
+interp = IntCodeInterpreter(prog, []) # Start on white
 interp.mem[0] = 2
 interp.inp =  [ord(c) for c in "A,B,A,C,B,A,C,B,A,C\nL,12,L,12,L,6,L,6\nR,8,R,4,L,12\nL,12,L,6,R,12,R,8\nn\n"]
 
