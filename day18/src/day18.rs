@@ -178,5 +178,105 @@ pub fn solve_part1(map: &Map) -> SolutionType {
 
 #[aoc(day18, part2)]
 pub fn solve_part2(map: &Map) -> SolutionType {
-    SolutionType::try_from(map.get_height()).expect("answer")
+    let mut map = map.clone();
+    let start = map.find(b'@')[0];
+
+    map.set_at(start, b'#');
+    map.set_at(start.walk(Dir::North), b'#');
+    map.set_at(start.walk(Dir::South), b'#');
+    map.set_at(start.walk(Dir::East), b'#');
+    map.set_at(start.walk(Dir::West), b'#');
+
+    map.print();
+
+    let mut verticies: Vec<_> = map
+        .iter()
+        .filter_map(|(pos, c)| {
+            if is_vertex(&map, pos, c) {
+                Some(pos)
+            } else {
+                Option::None
+            }
+        })
+        .collect();
+    verticies.push(start.walk(Dir::NorthWest));
+    verticies.push(start.walk(Dir::NorthEast));
+    verticies.push(start.walk(Dir::SouthWest));
+    verticies.push(start.walk(Dir::SouthEast));
+
+    assert!(verticies.len() < usize::from(EIdx::MAX));
+
+    let pos_to_vertex: HashMap<_, _> = verticies
+        .iter()
+        .enumerate()
+        .map(|(k, &v)| (v, EIdx::try_from(k).expect("fits")))
+        .collect();
+
+    let edges = create_edges(&map, &verticies, &pos_to_vertex);
+
+    let starts = [
+        *pos_to_vertex
+            .get(&start.walk(Dir::NorthWest))
+            .expect("Start is a vertex"),
+        *pos_to_vertex
+            .get(&start.walk(Dir::NorthEast))
+            .expect("Start is a vertex"),
+        *pos_to_vertex
+            .get(&start.walk(Dir::SouthWest))
+            .expect("Start is a vertex"),
+        *pos_to_vertex
+            .get(&start.walk(Dir::SouthEast))
+            .expect("Start is a vertex"),
+    ];
+
+    let all_keys = get_all_keys(&map, &verticies);
+
+    let mut frontier = Vec::new();
+    frontier.push((0i32, 0, starts));
+
+    let mut visited = HashMap::new();
+
+    let mut least_steps = i32::MAX;
+    while let Some((steps, keys, nodes)) = frontier.pop() {
+        for node_i in 0..nodes.len() {
+            let node = nodes[node_i];
+            if let Some(old_steps) = visited.get(&(node, keys)) {
+                if *old_steps <= steps {
+                    continue;
+                }
+            }
+            visited.insert((node, keys), steps);
+
+            for &(new_node, new_steps) in &edges[node as usize] {
+                let c = map.get_at_unchecked(verticies[usize::from(new_node)]);
+                let key = get_key_value(c);
+                let mut keys = keys;
+
+                keys |= key;
+
+                let steps = steps + i32::try_from(new_steps).expect("fits");
+
+                if keys == all_keys {
+                    if steps < least_steps {
+                        least_steps = steps;
+                    }
+                    continue;
+                }
+
+                let door = get_door_value(c);
+
+                if door != (door & keys) {
+                    // Can't pass door yet
+                    continue;
+                }
+
+                let mut new_nodes = nodes;
+                new_nodes[node_i] = new_node;
+
+                frontier.push((steps, keys, new_nodes));
+            }
+        }
+    }
+
+    SolutionType::try_from(least_steps).expect("A positive answer")
 }
